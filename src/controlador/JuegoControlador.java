@@ -1,6 +1,7 @@
 package controlador;
 
 import modelo.Tablero;
+import modelo.Casilla;
 import vista.VistaConsola;
 import excepciones.CasillaYaDescubiertaException;
 import java.util.Scanner;
@@ -11,6 +12,7 @@ public class JuegoControlador {
     private Scanner scanner;
 
     public JuegoControlador() {
+        // Inicializamos el modelo, la vista y el lector de teclado
         this.tablero = new Tablero();
         this.vista = new VistaConsola();
         this.scanner = new Scanner(System.in);
@@ -63,13 +65,49 @@ public class JuegoControlador {
             throw new ArrayIndexOutOfBoundsException();
         }
 
+        Casilla casillaActual = tablero.getCasillas()[fila][columna];
+
         // Lanzar nuestra excepción personalizada si la casilla ya fue descubierta
-        if (tablero.getCasillas()[fila][columna].isEstaDescubierta()) {
+        if (casillaActual.isEstaDescubierta()) {
             throw new CasillaYaDescubiertaException("¡La casilla " + entrada + " ya fue descubierta previamente!");
         }
 
-        // Si pasa todas las validaciones, descubrimos la casilla temporalmente
-        tablero.getCasillas()[fila][columna].setEstaDescubierta(true);
+        // Si pasa todas las validaciones, descubrimos la casilla
+        casillaActual.setEstaDescubierta(true);
+
+        // LÓGICA DE DERROTA (Si pisó una mina)
+        if (casillaActual.isEsMina()) {
+            vista.imprimirTablero(tablero); // Imprime el tablero una última vez para mostrar la mina
+            System.out.println("\n💥 ¡Booooom! Has pisado una mina en " + entrada + ". FIN DEL JUEGO 💥");
+            System.exit(0); // Esto cierra el programa automáticamente
+        }
+
+        // LÓGICA DE VICTORIA (Si descubrió todo lo seguro)
+        if (verificarVictoria()) {
+            vista.imprimirTablero(tablero);
+            System.out.println("\n🏆 ¡FELICIDADES! Has descubierto todas las casillas seguras. ¡GANASTE! 🏆");
+            System.exit(0); // Cierra el programa
+        }
+
         System.out.println("\n¡Casilla " + entrada + " descubierta con éxito!");
+    }
+
+    // Método que cuenta si ya abrimos todas las casillas que no son minas
+    private boolean verificarVictoria() {
+        int casillasSegurasDescubiertas = 0;
+        int totalCasillasSeguras = (tablero.getFilas() * tablero.getColumnas()) - tablero.getNumMinas();
+
+        for (int i = 0; i < tablero.getFilas(); i++) {
+            for (int j = 0; j < tablero.getColumnas(); j++) {
+                Casilla c = tablero.getCasillas()[i][j];
+                // Si la casilla está descubierta y NO es una mina, sumamos 1
+                if (c.isEstaDescubierta() && !c.isEsMina()) {
+                    casillasSegurasDescubiertas++;
+                }
+            }
+        }
+        
+        // Si las que descubrimos son iguales a las seguras totales, ganamos
+        return casillasSegurasDescubiertas == totalCasillasSeguras;
     }
 }
